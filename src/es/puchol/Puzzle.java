@@ -11,11 +11,13 @@ public class Puzzle {
     ArrayList<Estado> abiertos;
     ArrayList<Estado> cerrados;
     Estado estadoInicial;
+    Estado estadoFinal;
     Estado estadoActual;
 
-    public Puzzle(Estado estadoInicial) {
+    public Puzzle(Estado estadoInicial, Estado estadoFinal) {
 
         this.estadoInicial = estadoInicial;
+        this.estadoFinal = estadoFinal;
         this.abiertos = new ArrayList<>();
         this.cerrados = new ArrayList<>();
 
@@ -27,46 +29,66 @@ public class Puzzle {
     }
 
 
-    public void busquedaProfundidad() {
+    public void busqueda(int metodo) {
 
         prepararBusqueda();
         abiertos.add(estadoInicial);
 
-        while(!abiertos.isEmpty())
-        {
-            // coger el primer elemento de abiertos y sacarlo de la lista
+        while (!abiertos.isEmpty()) {
+            // Coger el primer elemento de abiertos y sacarlo de la lista
             estadoActual = abiertos.remove(0);
 
-            // añadir estado actual a cerrados
+            // Añadir estado actual a cerrados
             cerrados.add(estadoActual);
 
-            if(estadoActual.esEstadoFinal())
-            {
+            if (estadoActual.esEstadoFinal(estadoFinal)) {
+                System.out.println("Solucion encontrada:");
                 devolverCamino(estadoActual);
                 return;
             }
 
             ArrayList<Estado> sucesores = generarSucesores(estadoActual);
 
-            gestionarColaProfundidad(sucesores);
+            System.out.println();
+            System.out.println("Estado actual: " + estadoActual);
+            System.out.println("Sucesores: " + sucesores);
 
-            // if(busqueda es coste uniforme ordenamos por el coste)
-            Collections.sort(abiertos);
+            gestionarCola(sucesores, metodo);
 
+            System.out.println("Abiertos: ("  + abiertos.size() + ") " + abiertos);
+            System.out.println("Cerrados: ("  + cerrados.size() + ") " + cerrados);
         }
+
+        System.out.println("Solucion no encontrada");
 
     }
 
-    private void gestionarColaProfundidad(ArrayList<Estado> sucesores) {
+    private void gestionarCola(ArrayList<Estado> sucesores, int metodo) {
 
-        for(Estado sucesor : sucesores) {
+        Collections.reverse(sucesores);
 
-            if(abiertos.contains(sucesor))
-                continue;
+        for (Estado sucesor : sucesores) {
 
-            abiertos.add(0, sucesor);
+            // TODO: la madre del cordero
+            if (!abiertos.contains(sucesor) && !cerrados.contains(sucesor))
+                switch (metodo) {
+                    case 1:
+                        abiertos.add(0, sucesor);
+                        break;
+
+                    case 2:
+                        abiertos.add(sucesor);
+                        break;
+
+                    case 3:
+                        abiertos.add(sucesor);
+                        Collections.sort(abiertos);
+                        break;
+
+                }
 
         }
+
 
     }
 
@@ -74,31 +96,39 @@ public class Puzzle {
 
         ArrayList<Estado> sucesores = new ArrayList<>();
 
-        int i = 0, j = 0;
-        int ladoPuzzle = estadoActual.getNumeros().length ;
+        int iCero = 0, jCero = 0;
+        int ladoPuzzle = estadoActual.getNumeros().length;
 
-        for( i = 0; i < ladoPuzzle; i++) {
-            for( j = 0; j < ladoPuzzle; j++) {
-                if(estadoActual.getNumeros()[i][j] == 0)
+        for (int i = 0; i < ladoPuzzle; i++) {
+            for (int j = 0; j < ladoPuzzle; j++) {
+                if (estadoActual.getNumeros()[i][j] == 0) {
+                    iCero = i;
+                    jCero = j;
                     break;
+                }
             }
         }
 
-        // Comprobar si es posible mover arriba
-        if(j > 0)
-            sucesores.add(moverFichaBlanca(estadoActual, i, j, 1, 0));
+        if (estadoActual.getNumeros()[iCero][jCero] != 0)
+            return sucesores;
 
-        // Comprobar si es posible mover abajo
-        if(j < ladoPuzzle)
-            sucesores.add(moverFichaBlanca(estadoActual, i, j, -1, 0));
 
         // Comprobar si es posible mover derecha
-        if(i > ladoPuzzle)
-            sucesores.add(moverFichaBlanca(estadoActual, i, j, 0, 1));
+        if (jCero < ladoPuzzle - 1)
+            sucesores.add(moverFichaBlanca(estadoActual, iCero, jCero, 0, 1));
 
         // Comprobar si es posible mover izquierda
-        if(i > 0)
-            sucesores.add(moverFichaBlanca(estadoActual, i, j, 0, -1));
+        if (jCero > 0)
+            sucesores.add(moverFichaBlanca(estadoActual, iCero, jCero, 0, -1));
+
+        // Comprobar si es posible mover arriba
+        if (iCero > 0)
+            sucesores.add(moverFichaBlanca(estadoActual, iCero, jCero, -1, 0));
+
+        // Comprobar si es posible mover abajo
+        if (iCero < ladoPuzzle - 1)
+            sucesores.add(moverFichaBlanca(estadoActual, iCero, jCero, 1, 0));
+
 
         return sucesores;
 
@@ -106,7 +136,12 @@ public class Puzzle {
 
     private Estado moverFichaBlanca(Estado estadoActual, int i, int j, int iShift, int jShift) {
 
-        int[][] nuevoOrden = estadoActual.getNumeros();
+        int ladoPuzzle = estadoActual.getNumeros().length;
+        int[][] nuevoOrden = new int[ladoPuzzle][ladoPuzzle];
+
+        for (int in = 0; in < ladoPuzzle; in++)
+            for (int jn = 0; jn < ladoPuzzle; jn++)
+                nuevoOrden[in][jn] = estadoActual.getNumeros()[in][jn];
 
         int iNueva = i + iShift;
         int jNueva = j + jShift;
@@ -114,17 +149,24 @@ public class Puzzle {
         nuevoOrden[i][j] = nuevoOrden[iNueva][jNueva];
         nuevoOrden[iNueva][jNueva] = 0;
 
-        return new Estado(estadoActual, nuevoOrden, estadoActual.getCoste() + estadoActual.getNumeros()[i][j]);
+        Estado nuevoEstado = new Estado(estadoActual, nuevoOrden, estadoActual.getCoste() + estadoActual.getNumeros()[iNueva][jNueva]);
 
+//        System.out.println("Orden Antiguo:" + estadoActual);
+//        System.out.println("Orden Nuevo:" + nuevoEstado);
+
+        return nuevoEstado;
     }
 
     private void devolverCamino(Estado estadoActual) {
 
-        if(estadoActual.getPadre() != null)
+        if (estadoActual.getPadre() != null)
             devolverCamino(estadoActual.getPadre());
 
         System.out.println(estadoActual);
 
     }
 
+    public void imprimirFichero() {
+        // TODO hacer el txt con los datos
+    }
 }
